@@ -1,3 +1,5 @@
+require_relative "transaction"
+
 class CoinhakoTransaction < Hashie::Dash
   property :pair, required: true
   property :side, required: true

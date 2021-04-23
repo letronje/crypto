@@ -1,3 +1,5 @@
+require_relative "transaction"
+
 class BinanceSGTransaction < Hashie::Dash
   property :type, required: true
   property :sourceAmount, required: true
@@ -20,14 +22,7 @@ class BinanceSGTransaction < Hashie::Dash
       entries = entries["data"]["rows"]["dataList"]
     end
     binance_transactions = entries.map do |e|
-      begin
-        self.new(e).to_transaction
-      rescue => ex
-        ap e
-        ap ex.message
-        ap ex.backtrace
-      else
-      end
+      self.new(e).to_transaction
     end.compact
   end
 

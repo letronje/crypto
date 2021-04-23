@@ -5,126 +5,185 @@ require "rubygems"
 require "bundler/setup"
 Bundler.require(:default)
 
+require "active_support/all"
+
+require_relative "constants"
 require_relative "coinhako"
 require_relative "binance_sg"
+require_relative "transactions"
 
-EXCHANGE_COINHAKO = :coinhako
-EXCHANGE_BINANCE_SG = :binance_sg
-EXCHANGE_GEMINI = :gemini
-TRANSACTION_TYPE_BUY = :buy
-TRANSACTION_TYPE_SELL = :sell
-TRANSACTION_TYPE_SEND = :send
-TRANSACTION_TYPE_RECV = :recv
-
-class Transaction < Hashie::Dash
-  property :exchange, required: true
-  property :crypto_currency, required: true
-  property :fiat_currency, required: true
-  property :type, required: true
-  property :price, required: true
-  property :source_amount, required: true
-  property :obtain_amount, required: true
-  property :trade_fee, required: true
-  property :at, required: true
+def per(a, b, n = 3)
+  p = ((a * 100.0) / b.to_f).round(n)
+  "#{p}%"
 end
 
-# def coinhako_csv_row_to_transaction(r)
-#   [
-#     :pair,
-#     :side,
-#     :type,
-#     :average_price,
-#     :price,
-#     :amount,
-#     :executed,
-#     :fee,
-#     :total,
-#     :status,
-#     :timestamp,
-#   ].zip(r).to_h
-# end
+all_transactions = CoinhakoTransaction.from_csv_file(ARGV[0]) + BinanceSGTransaction.from_json_file(ARGV[1])
 
-# def coinhako_transaction_to_transaction(t)
-#   return nil if t[:status] != "Completed"
-#   currency1, currency2 = t[:pair].split("/")
-#   type = t[:side] == "Buy" ? :buy : :sell
-#   {
-#     exchange: :coinhako,
-#     crypto_currency: currency1.downcase.to_sym,
-#     fiat_currency: currency2.downcase.to_sym,
-#     type: type,
-#     price: t[:price].to_f,
-#     source_amount: t[:amount].to_f,
-#     trade_fee: t[:fee].to_f,
-#     obtain_amount: t[:total].to_f,
-#     at: Time.parse(t[:timestamp]),
-#   }
-# end
+all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |pair, transactions|
+  cc, fc = pair
 
-# def binance_transaction_to_transaction(t)
-#   return nil if t["status"] != "4"
-#   type = t["payType"] == "1" ? :buy : :sell
-#   {
-#     exchange: :binance,
-#     crypto_currency: t["cryptoCurrency"].downcase.to_sym,
-#     fiat_currency: t["fiatCurrency"].downcase.to_sym,
-#     type: type,
-#     price: t["price"].to_f,
-#     source_amount: t["sourceAmount"].to_f,
-#     trade_fee: t["tradeFee"].to_f,
-#     obtain_amount: t["obtainAmount"].to_f,
-#     at: Time.parse(t["createTime"]),
-#   }
-# end
-
-def transaction_to_str(t)
-  "#{t[:obtain_amount]} #{t[:crypto_currency].to_s.upcase} @ #{t[:price]} with #{t[:source_amount]} #{t[:fiat_currency].to_s.upcase} [#{t[:at]}]"
-end
-
-transactions = CoinhakoTransaction.from_csv_file(ARGV[0]) + BinanceSGTransaction.from_json_file(ARGV[1])
-transactions.sort_by! { |x| -x[:at].to_i }
-grouped_transactions = transactions.group_by { |t| [t[:crypto_currency], t[:fiat_currency]] }
-
-grouped_transactions.each do |k, transactions|
-  cc, fc = k
-  num = 0.0
-  denom = 0.0
-  min_price = Float::INFINITY
-  max_price = -1
-  min_price_t = nil
-  max_price_t = nil
-
-  transactions.each do |t|
-    next if t[:type] != :buy
-    price = t[:price]
-    source_amount = t[:source_amount]
-    num += price * source_amount
-    denom += source_amount
-
-    if price < min_price
-      min_price = price
-      min_price_t = t
-    end
-
-    if price > max_price
-      max_price = price
-      max_price_t = t
-    end
-  end
-
-  weighted_avg = num / denom
   cc = cc.to_s.upcase
   fc = fc.to_s.upcase
+
+  puts
   print("-" * 25)
   print("#{}---------------- #{cc} / #{fc} ------------------")
   puts("-" * 25)
-  puts("Average buy price: #{weighted_avg}")
-  latest_t = transactions.max_by { |t| t[:at] }
   puts
-  puts("Most Recent Buy: #{transaction_to_str(latest_t)}")
-  puts("Cheapest Buy: #{transaction_to_str(min_price_t)}")
-  puts("Costliest Buy: #{transaction_to_str(max_price_t)}")
-  puts
-end
 
-ap("hello")
+  buys = transactions.select(&:buy?)
+  buys_by_exchange = buys.group_by(&:exchange)
+
+  total_obtained = 0.0
+  total_spent = 0.0
+  total_trade_fee = 0.0
+
+  table = Terminal::Table.new do |t|
+    t.title = "Buys"
+    t.headings = ["Exchange", cc, fc, "Fee", "# Transactions"]
+    t.style = { :border => Terminal::Table::UnicodeBorder.new() }
+
+    EXCHANGES.each do |e|
+      ebuys = buys_by_exchange[e] || []
+      next if ebuys.blank?
+      crypto_obtained = ebuys.sum(&:obtain_amount); total_obtained += crypto_obtained
+      fiat_spent = ebuys.sum(&:source_amount); total_spent += fiat_spent
+      trade_fee = ebuys.sum(&:trade_fee); total_trade_fee += trade_fee
+      t.add_row [
+        e.to_s.titleize,
+        crypto_obtained,
+        fiat_spent,
+        "#{trade_fee} ( #{per(trade_fee, fiat_spent)} )",
+        ebuys.size,
+      ]
+    end
+
+    if t.rows.size > 1
+      t.add_separator border_type: :double
+      t.add_row [
+                  "TOTAL",
+                  total_obtained,
+                  total_spent,
+                  "#{total_trade_fee} ( #{per(total_trade_fee, total_spent)} )",
+                  buys.size,
+                ]
+    end
+  end
+
+  avg_buy_price = total_spent / total_obtained
+
+  puts table if buys.present?
+
+  puts("\nAverage Buy price: #{avg_buy_price}\n\n")
+
+  table = Terminal::Table.new do |t|
+    t.title = "Notable Buys"
+    t.headings = ["Type", "Time", "Exchange", fc, "Rate", cc]
+    t.style = { :border => Terminal::Table::UnicodeBorder.new() }
+
+    b = buys.max_by(&:price)
+
+    t.add_row [
+      "Lowest Rate",
+      b.at.to_formatted_s(:rfc822),
+      b.exchange.to_s.titleize,
+      b.source_amount,
+      b.price,
+      b.obtain_amount,
+    ]
+
+    b = buys.min_by(&:price)
+    t.add_row [
+      "Highest Rate",
+      b.at.to_formatted_s(:rfc822),
+      b.exchange.to_s.titleize,
+      b.source_amount,
+      b.price,
+      b.obtain_amount,
+    ]
+
+    b = buys.min_by(&:at)
+    t.add_row [
+      "Most Recent",
+      b.at.to_formatted_s(:rfc822),
+      b.exchange.to_s.titleize,
+      b.source_amount,
+      b.price,
+      b.obtain_amount,
+    ]
+
+    b = buys.max_by(&:obtain_amount)
+    t.add_row [
+      "Most Crypto Obtained",
+      b.at.to_formatted_s(:rfc822),
+      b.exchange.to_s.titleize,
+      b.source_amount,
+      b.price,
+      b.obtain_amount,
+    ]
+
+    b = buys.min_by(&:obtain_amount)
+    t.add_row [
+      "Least Crypto Obtained",
+      b.at.to_formatted_s(:rfc822),
+      b.exchange.to_s.titleize,
+      b.source_amount,
+      b.price,
+      b.obtain_amount,
+    ]
+  end
+
+  puts table
+
+  sells = transactions.select(&:sell?)
+  sells_by_exchange = sells.group_by(&:exchange)
+
+  total_obtained = 0.0
+  total_spent = 0.0
+  total_trade_fee = 0.0
+
+  table = Terminal::Table.new do |t|
+    t.title = "Sells"
+    t.headings = ["Exchange", cc, fc, "Fee", "# Transactions"]
+    t.style = { :border => Terminal::Table::UnicodeBorder.new() }
+
+    EXCHANGES.each do |e|
+      esells = sells_by_exchange[e] || []
+      next if esells.blank?
+      fiat_obtained = esells.sum(&:obtain_amount); total_obtained += fiat_obtained
+      crypto_spent = esells.sum(&:source_amount); total_spent += crypto_spent
+      trade_fee = esells.sum(&:trade_fee); total_trade_fee += trade_fee
+      t.add_row [
+        e.to_s.titleize,
+        crypto_spent,
+        fiat_obtained,
+        trade_fee,
+        esells.size,
+      ]
+    end
+
+    if t.rows.size > 1
+      t.add_separator border_type: :double
+      t.add_row [
+                  "TOTAL",
+                  total_spent,
+                  total_obtained,
+                  total_trade_fee,
+                  sells.size,
+                ]
+    end
+  end
+
+  avg_sell_price = total_obtained / total_spent
+
+  puts table if sells.present?
+
+  if sells.present?
+    puts("\nAverage Sell price: #{avg_sell_price}\n\n")
+  end
+
+  total_bought = buys.sum(&:obtain_amount)
+  total_sold = sells.sum(&:source_amount)
+
+  puts "\nTotal #{cc} owned: #{total_bought - total_sold} ( Bought: #{total_bought}, Sold: #{total_sold})"
+end
