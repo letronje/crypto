@@ -180,6 +180,65 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
 
   if sells.present?
     puts("\nAverage Sell price: #{avg_sell_price}\n\n")
+
+    table = Terminal::Table.new do |t|
+      t.title = "Notable Sells"
+      t.headings = ["Type", "Time", "Exchange", fc, "Rate", cc]
+      t.style = { :border => Terminal::Table::UnicodeBorder.new() }
+
+      b = sells.max_by(&:price)
+
+      t.add_row [
+                  "Lowest Rate",
+                  b.at.to_formatted_s(:rfc822),
+                  b.exchange.to_s.titleize,
+                  b.source_amount,
+                  b.price,
+                  b.obtain_amount,
+                ]
+
+      b = sells.min_by(&:price)
+      t.add_row [
+                  "Highest Rate",
+                  b.at.to_formatted_s(:rfc822),
+                  b.exchange.to_s.titleize,
+                  b.source_amount,
+                  b.price,
+                  b.obtain_amount,
+                ]
+
+      b = sells.min_by(&:at)
+      t.add_row [
+                  "Most Recent",
+                  b.at.to_formatted_s(:rfc822),
+                  b.exchange.to_s.titleize,
+                  b.source_amount,
+                  b.price,
+                  b.obtain_amount,
+                ]
+
+      b = sells.max_by(&:obtain_amount)
+      t.add_row [
+                  "Most Fiat Obtained",
+                  b.at.to_formatted_s(:rfc822),
+                  b.exchange.to_s.titleize,
+                  b.source_amount,
+                  b.price,
+                  b.obtain_amount,
+                ]
+
+      b = sells.min_by(&:obtain_amount)
+      t.add_row [
+                  "Least Fiat Obtained",
+                  b.at.to_formatted_s(:rfc822),
+                  b.exchange.to_s.titleize,
+                  b.source_amount,
+                  b.price,
+                  b.obtain_amount,
+                ]
+    end
+
+    puts table
   end
 
   total_bought = buys.sum(&:obtain_amount)
