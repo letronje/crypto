@@ -1,6 +1,9 @@
 require "csv"
 require "time"
 require "json"
+require "bigdecimal"
+require "bigdecimal/util"
+
 require "rubygems"
 require "bundler/setup"
 Bundler.require(:default)
@@ -34,9 +37,9 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   buys = transactions.select(&:buy?)
   buys_by_exchange = buys.group_by(&:exchange)
 
-  total_obtained = 0.0
-  total_spent = 0.0
-  total_trade_fee = 0.0
+  total_obtained = BigDecimal("0")
+  total_spent = BigDecimal("0")
+  total_trade_fee = BigDecimal("0")
 
   table = Terminal::Table.new do |t|
     t.title = "Buys"
@@ -138,9 +141,9 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   sells = transactions.select(&:sell?)
   sells_by_exchange = sells.group_by(&:exchange)
 
-  total_obtained = 0.0
-  total_spent = 0.0
-  total_trade_fee = 0.0
+  total_obtained = BigDecimal("0")
+  total_spent = BigDecimal("0")
+  total_trade_fee = BigDecimal("0")
 
   table = Terminal::Table.new do |t|
     t.title = "Sells"

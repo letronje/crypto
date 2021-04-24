@@ -50,7 +50,6 @@ class CoinhakoTransaction < Hashie::Dash
       return nil
     end
 
-    # TODO: what are the other possible values for "status" ?
     currency1, currency2 = pair.split("/")
 
     Transaction.new(
@@ -58,10 +57,10 @@ class CoinhakoTransaction < Hashie::Dash
       crypto_currency: currency1.downcase.to_sym,
       fiat_currency: currency2.downcase.to_sym,
       type: transaction_type,
-      price: price.to_f,
-      source_amount: amount.to_f,
-      trade_fee: fee.to_f,
-      obtain_amount: total.to_f,
+      price: BigDecimal(price),
+      source_amount: BigDecimal(amount),
+      trade_fee: BigDecimal(fee),
+      obtain_amount: BigDecimal(total),
       at: Time.parse(timestamp),
     )
   end

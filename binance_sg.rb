@@ -43,10 +43,10 @@ class BinanceSGTransaction < Hashie::Dash
       crypto_currency: cryptoCurrency.downcase.to_sym,
       fiat_currency: fiatCurrency.downcase.to_sym,
       type: transaction_type,
-      price: price.to_f,
-      source_amount: sourceAmount.to_f,
-      trade_fee: tradeFee.to_f,
-      obtain_amount: obtainAmount.to_f,
+      price: price.to_d,
+      source_amount: BigDecimal(sourceAmount),
+      trade_fee: tradeFee.to_d,
+      obtain_amount: obtainAmount.to_d,
       at: Time.parse(createTime),
     )
   end
