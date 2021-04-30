@@ -1,5 +1,6 @@
 require "csv"
 require "time"
+require "base64"
 require "json"
 require "bigdecimal"
 require "bigdecimal/util"
@@ -13,6 +14,7 @@ require "active_support/all"
 require_relative "constants"
 require_relative "coinhako"
 require_relative "binance_sg"
+require_relative "gemini"
 require_relative "transactions"
 
 def per(a, b, n = 3)
@@ -20,7 +22,11 @@ def per(a, b, n = 3)
   "#{p}%"
 end
 
-all_transactions = CoinhakoTransaction.from_csv_file(ARGV[0]) + BinanceSGTransaction.from_json_file(ARGV[1])
+t1 = CoinhakoTransaction.from_csv_file(ARGV[0])
+t2 = BinanceSGTransaction.from_json_file(ARGV[1])
+t3 = GeminiTransaction.from_api(ENV["GEMINI_API_KEY"], ENV["GEMINI_API_SECRET"])
+
+all_transactions = t1 + t2 + t3
 
 all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |pair, transactions|
   cc, fc = pair

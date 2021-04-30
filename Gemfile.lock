@@ -9,10 +9,21 @@ GEM
       zeitwerk (~> 2.3)
     awesome_print (1.9.2)
     concurrent-ruby (1.1.8)
+    faraday (1.4.1)
+      faraday-excon (~> 1.1)
+      faraday-net_http (~> 1.0)
+      faraday-net_http_persistent (~> 1.1)
+      multipart-post (>= 1.2, < 3)
+      ruby2_keywords (>= 0.0.4)
+    faraday-excon (1.1.0)
+    faraday-net_http (1.0.1)
+    faraday-net_http_persistent (1.1.0)
     hashie (4.1.0)
     i18n (1.8.10)
       concurrent-ruby (~> 1.0)
     minitest (5.14.4)
+    multipart-post (2.1.1)
+    ruby2_keywords (0.0.4)
     terminal-table (3.0.0)
       unicode-display_width (~> 1.1, >= 1.1.1)
     tzinfo (2.0.4)
@@ -27,6 +38,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   awesome_print
+  faraday
   hashie
   terminal-table
 

@@ -1,6 +1,9 @@
 require_relative "transaction"
 
 class BinanceSGTransaction < Hashie::Dash
+  include Hashie::Extensions::IgnoreUndeclared
+  include Hashie::Extensions::IndifferentAccess
+
   property :type, required: true
   property :sourceAmount, required: true
   property :tradeFee, required: true
@@ -11,9 +14,6 @@ class BinanceSGTransaction < Hashie::Dash
   property :createTime, required: true
   property :cryptoCurrency, required: true
   property :fiatCurrency, required: true
-
-  include Hashie::Extensions::IgnoreUndeclared
-  include Hashie::Extensions::IndifferentAccess
 
   def self.from_json_file(file)
     return [] if file.nil?
