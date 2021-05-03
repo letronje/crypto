@@ -31,10 +31,12 @@ class CoinhakoTransaction < Hashie::Dash
 
   def self.from_csv_file(file)
     return [] if file.nil?
+
     rows = CSV.new(File.read(file)).read
 
-    transactions = rows.map.with_index do |r, index|
+    rows.map.with_index do |r, index|
       next if index.zero?
+
       from_csv_row(r).to_transaction
     end.compact
   end
@@ -57,10 +59,10 @@ class CoinhakoTransaction < Hashie::Dash
       crypto_currency: currency1.downcase.to_sym,
       fiat_currency: currency2.downcase.to_sym,
       type: transaction_type,
-      price: BigDecimal(price),
-      source_amount: BigDecimal(amount),
-      trade_fee: BigDecimal(fee),
-      obtain_amount: BigDecimal(total),
+      price: BigDecimal(price, BIG_DEC_SIG_DIGITS),
+      source_amount: BigDecimal(amount, BIG_DEC_SIG_DIGITS),
+      trade_fee: BigDecimal(fee, BIG_DEC_SIG_DIGITS),
+      obtain_amount: BigDecimal(total, BIG_DEC_SIG_DIGITS),
       at: Time.parse(timestamp),
     )
   end

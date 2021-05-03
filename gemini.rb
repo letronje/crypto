@@ -52,10 +52,10 @@ class GeminiTransaction < Hashie::Dash
       crypto_currency: currency1.downcase.to_sym,
       fiat_currency: currency2.downcase.to_sym,
       type: transaction_type,
-      price: BigDecimal(price),
-      source_amount: (BigDecimal(price) * BigDecimal(amount)).round(2).to_f,
-      trade_fee: BigDecimal(fee_amount),
-      obtain_amount: BigDecimal(amount),
+      price: BigDecimal(price, BIG_DEC_SIG_DIGITS),
+      source_amount: (BigDecimal(price, BIG_DEC_SIG_DIGITS) * BigDecimal(amount, BIG_DEC_SIG_DIGITS)).round(2).to_f,
+      trade_fee: BigDecimal(fee_amount, BIG_DEC_SIG_DIGITS),
+      obtain_amount: BigDecimal(amount, BIG_DEC_SIG_DIGITS),
       at: Time.at(timestamp.to_i),
     )
   end

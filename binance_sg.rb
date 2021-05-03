@@ -17,12 +17,12 @@ class BinanceSGTransaction < Hashie::Dash
 
   def self.from_json_file(file)
     return [] if file.nil?
+
     entries = JSON.parse(File.read(file))
-    unless entries.is_a?(Array)
-      entries = entries["data"]["rows"]["dataList"]
-    end
-    binance_transactions = entries.map do |e|
-      self.new(e).to_transaction
+    entries = entries["data"]["rows"]["dataList"] unless entries.is_a?(Array)
+    entries.map do |e|
+      bst = new(e)
+      bst.to_transaction
     end.compact
   end
 
@@ -34,7 +34,6 @@ class BinanceSGTransaction < Hashie::Dash
     # TODO: what are the other possible values for "status" ?
 
     unless completed?
-      puts "#{self.inspect}"
       return nil
     end
 
@@ -43,17 +42,19 @@ class BinanceSGTransaction < Hashie::Dash
       crypto_currency: cryptoCurrency.downcase.to_sym,
       fiat_currency: fiatCurrency.downcase.to_sym,
       type: transaction_type,
-      price: price.to_d,
-      source_amount: BigDecimal(sourceAmount),
-      trade_fee: tradeFee.to_d,
-      obtain_amount: obtainAmount.to_d,
+      price: BigDecimal(price, BIG_DEC_SIG_DIGITS),
+      source_amount: BigDecimal(sourceAmount, BIG_DEC_SIG_DIGITS),
+      trade_fee: BigDecimal(tradeFee, BIG_DEC_SIG_DIGITS),
+      obtain_amount: BigDecimal(obtainAmount, BIG_DEC_SIG_DIGITS),
       at: Time.parse(createTime),
     )
   end
 
   def transaction_type
-    case payType
+    case type
     when "1"
+      TRANSACTION_TYPE_SELL
+    when "0"
       TRANSACTION_TYPE_BUY
     else
       raise "oops"

@@ -28,6 +28,37 @@ t3 = GeminiTransaction.from_api(ENV["GEMINI_API_KEY"], ENV["GEMINI_API_SECRET"])
 
 all_transactions = t1 + t2 + t3
 
+output_csv = "cointracker.csv"
+CSV.open(output_csv, "w") do |csv|
+  csv << [
+    "Date",
+    "Received Quantity",
+    "Received Currency",
+    "Sent Quantity",
+    "Sent Currency",
+    "Fee Amount",
+    "Fee Currency",
+    "Tag",
+  ]
+  all_transactions.sort_by(&:at).each do |t|
+    # TODO: support Sell/Send/Receive transactions
+    unless t.buy?
+      ap "Skipping non-buy transaction from cointracker #{t}"
+      next
+    end
+    csv << [
+      t.at.strftime("%m/%d/%Y %H:%M:%S"),
+      t.obtain_amount.to_s,
+      t.crypto_currency.to_s.upcase,
+      t.source_amount.to_s,
+      t.fiat_currency.to_s.upcase,
+      t.trade_fee.to_s,
+      "SGD",
+      "",
+    ]
+  end
+end
+
 all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |pair, transactions|
   cc, fc = pair
 
