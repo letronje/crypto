@@ -32,6 +32,7 @@ t3 = GeminiTransaction.from_api(ENV["GEMINI_API_KEY"], ENV["GEMINI_API_SECRET"])
 all_transactions = t1 + t2 + t3
 
 output_csv = "cointracker.csv"
+written_transactions = 0
 CSV.open(output_csv, "w") do |csv|
   csv << [
     "Date",
@@ -45,23 +46,48 @@ CSV.open(output_csv, "w") do |csv|
   ]
   all_transactions.sort_by(&:at).each do |t|
     # TODO: support Sell/Send/Receive transactions
-    unless t.buy?
-      ap "Skipping non-buy transaction #{t}"
-      next
+    if t.buy?
+      csv << [
+        t.at.strftime("%m/%d/%Y %H:%M:%S"),
+
+        t.obtain_amount.to_s,
+        t.crypto_currency.to_s.upcase,
+
+        t.source_amount.to_s,
+        t.fiat_currency.to_s.upcase,
+
+        t.trade_fee.to_s,
+        "SGD",
+
+        "",
+      ]
+      written_transactions += 1
+    elsif t.sell?
+      csv << [
+        t.at.strftime("%m/%d/%Y %H:%M:%S"),
+
+        t.obtain_amount.to_s,
+        t.fiat_currency.to_s.upcase,
+
+        t.source_amount.to_s,
+        t.crypto_currency.to_s.upcase,
+
+        t.trade_fee.to_s,
+        "SGD",
+        "",
+      ]
+      written_transactions += 1
+    else
+      ap "Skipping transaction for cointracker #{t}"
     end
-    csv << [
-      t.at.strftime("%m/%d/%Y %H:%M:%S"),
-      t.obtain_amount.to_s,
-      t.crypto_currency.to_s.upcase,
-      t.source_amount.to_s,
-      t.fiat_currency.to_s.upcase,
-      t.trade_fee.to_s,
-      "SGD",
-      "",
-    ]
   end
 end
 
+puts "Wrote #{written_transactions} transactions to #{output_csv}"
+
+grand_total_fiat_gain = BigDecimal("0")
+grand_total_fiat_lost = BigDecimal("0")
+grand_total_crypto_worth_in_fiat = BigDecimal("0")
 all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |pair, transactions|
   cc_sym, fc_sym = pair
 
@@ -173,12 +199,16 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
 
   total_crypto_owned = total_crypto_obtained - total_crypto_spent
   total_fiat_lost = total_fiat_spent - total_fiat_obtained
+  grand_total_fiat_lost += total_fiat_lost
   avg_own_price = total_fiat_lost / total_crypto_owned
   puts("\nAverage Own price: #{avg_own_price}\n\n")
 
   crypto_worth_in_fiat = total_crypto_owned * cmc.price(cc_sym)
-  percent_gain_in_fiat = (((crypto_worth_in_fiat - total_fiat_lost) * 100.0) / total_fiat_lost).round(2)
-  puts("\n% fiat gain: #{percent_gain_in_fiat}%\n\n")
+  grand_total_crypto_worth_in_fiat += crypto_worth_in_fiat
+  gain_in_fiat = crypto_worth_in_fiat - total_fiat_lost
+  grand_total_fiat_gain += gain_in_fiat
+  percent_gain_in_fiat = ((gain_in_fiat * 100.0) / total_fiat_lost).round(2)
+  puts("\nGain: #{gain_in_fiat.round(2)} #{fc} ( #{percent_gain_in_fiat} % )\n\n")
 
   # ap({
   #      total_crypto_obtained: total_crypto_obtained,
@@ -353,3 +383,12 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   # end
 
 end
+
+puts "=" * 100
+
+puts("\nTOTAL Fiat spent: #{grand_total_fiat_lost.round(2)} #{FIAT_CURRENCY.to_s.upcase}\n\n")
+grand_total_gain_in_fiat = grand_total_crypto_worth_in_fiat - grand_total_fiat_lost
+grand_total_percent_gain_in_fiat = ((grand_total_gain_in_fiat * 100.0) / grand_total_fiat_lost).round(2)
+puts("TOTAL Gain: #{grand_total_fiat_gain.round(2)} #{FIAT_CURRENCY.to_s.upcase} ( #{grand_total_percent_gain_in_fiat} % ) \n\n")
+
+puts "=" * 100
