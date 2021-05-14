@@ -14,3 +14,7 @@ TRANSACTION_TYPE_SEND = :send
 TRANSACTION_TYPE_RECV = :recv
 
 BIG_DEC_SIG_DIGITS = 8
+
+CRYPTO_SYMBOLS = [:btc, :eth, :doge, :bat]
+
+FIAT_CURRENCY = :sgd
