@@ -26,7 +26,7 @@ class CoinhakoTransaction < Hashie::Dash
       :total,
       :status,
       :timestamp,
-    ].zip(row).to_h)
+    ].zip(row.map(&:to_s)).to_h)
   end
 
   def self.from_csv_file(file)
@@ -36,7 +36,6 @@ class CoinhakoTransaction < Hashie::Dash
 
     rows.map.with_index do |r, index|
       next if index.zero?
-
       from_csv_row(r).to_transaction
     end.compact
   end
@@ -48,7 +47,7 @@ class CoinhakoTransaction < Hashie::Dash
   def to_transaction
     # TODO: what are the other possible values for "status" ?
     unless completed?
-      puts "#{self.inspect}"
+      puts "Found an incomplete transaction: #{self.inspect}"
       return nil
     end
 
