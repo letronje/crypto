@@ -201,20 +201,21 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   total_fiat_lost = total_fiat_spent - total_fiat_obtained
   grand_total_fiat_lost += total_fiat_lost
   avg_own_price = total_fiat_lost / total_crypto_owned
-  puts("\nAverage Own price: #{avg_own_price}\n\n")
+  puts("\nAverage Own price: #{avg_own_price}\n")
 
-  cmc_price = cmc.price(cc_sym)
-  if cmc_price == nil
+  current_price = cmc.price(cc_sym)
+  if current_price.nil?
     puts ("\n SKIPPING gains calculation as cannot get crypto price from CMC")
     next
   end
 
-  crypto_worth_in_fiat = total_crypto_owned * cmc_price
+  crypto_worth_in_fiat = total_crypto_owned * current_price
   grand_total_crypto_worth_in_fiat += crypto_worth_in_fiat
   gain_in_fiat = crypto_worth_in_fiat - total_fiat_lost
   grand_total_fiat_gain += gain_in_fiat
   percent_gain_in_fiat = ((gain_in_fiat * 100.0) / total_fiat_lost).round(2)
-  puts("\nGain: #{gain_in_fiat.round(2)} #{fc} ( #{percent_gain_in_fiat} % )\n\n")
+  puts("\nCurrent Price: #{current_price.round(2)} #{fc}\n")
+  puts("\nGain: #{gain_in_fiat.round(2)} #{fc} ( #{percent_gain_in_fiat} % )\n")
 
   # ap({
   #      total_crypto_obtained: total_crypto_obtained,
