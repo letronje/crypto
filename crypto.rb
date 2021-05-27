@@ -20,7 +20,7 @@ require_relative "coinmarketcap"
 
 def per(a, b, n = 3)
   p = ((a * 100.0) / b.to_f).round(n)
-  "#{p}%"
+  "#{p} %"
 end
 
 cmc = CoinMarketCap.new(ENV["CMC_API_KEY"])
@@ -120,9 +120,9 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
       trade_fee = ebuys.sum(&:trade_fee); total_fiat_trade_fee += trade_fee
       t.add_row [
         e.to_s.titleize,
-        crypto_obtained,
-        fiat_spent,
-        "#{trade_fee} ( #{per(trade_fee, fiat_spent)} )",
+        crypto_obtained.round(4),
+        fiat_spent.round(2),
+        "#{trade_fee.round(2)} ( #{per(trade_fee, fiat_spent, 2)} )",
         ebuys.size,
       ]
     end
@@ -131,9 +131,9 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
       t.add_separator border_type: :double
       t.add_row [
                   "TOTAL",
-                  total_crypto_obtained,
-                  total_fiat_spent,
-                  "#{total_fiat_trade_fee} ( #{per(total_fiat_trade_fee, total_fiat_spent)} )",
+                  total_crypto_obtained.round(4),
+                  total_fiat_spent.round(2),
+                  "#{total_fiat_trade_fee.round(2)} ( #{per(total_fiat_trade_fee, total_fiat_spent, 2)} )",
                   buys.size,
                 ]
     end
@@ -143,7 +143,7 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
 
   puts table if buys.present?
 
-  puts("\nAverage Buy price: #{avg_buy_price}\n\n")
+  puts("\nAverage Buy price: #{avg_buy_price.round(2)} #{fc}\n\n")
 
   sells = transactions.select(&:sell?)
   sells_by_exchange = sells.group_by(&:exchange)
@@ -176,9 +176,9 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
       t.add_separator border_type: :double
       t.add_row [
                   "TOTAL",
-                  total_fiat_spent,
-                  total_crypto_obtained,
-                  total_fiat_trade_fee,
+                  total_fiat_spent.round(2),
+                  total_crypto_obtained.round(4),
+                  total_fiat_trade_fee.round(2),
                   sells.size,
                 ]
     end
@@ -189,19 +189,19 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   puts table if sells.present?
 
   if sells.present?
-    puts("\nAverage Sell price: #{avg_sell_price}\n\n")
+    puts("\nAverage Sell price: #{avg_sell_price.round(2)} #{fc}\n\n")
   end
 
   total_bought = buys.sum(&:obtain_amount)
   total_sold = sells.sum(&:source_amount)
 
-  puts "\nTotal #{cc} owned: #{total_bought - total_sold} ( Bought: #{total_bought}, Sold: #{total_sold})"
+  puts "\nTotal #{cc} owned: #{(total_bought - total_sold).round(4)} ( Bought: #{total_bought.round(4)}, Sold: #{total_sold.round(4)} )"
 
   total_crypto_owned = total_crypto_obtained - total_crypto_spent
   total_fiat_lost = total_fiat_spent - total_fiat_obtained
   grand_total_fiat_lost += total_fiat_lost
   avg_own_price = total_fiat_lost / total_crypto_owned
-  puts("\nAverage Own price: #{avg_own_price}\n")
+  puts("\nAverage Own price: #{avg_own_price.round(2)} #{fc}\n")
 
   current_price = cmc.price(cc_sym)
   if current_price.nil?
@@ -214,6 +214,7 @@ all_transactions.group_by { |t| [t.crypto_currency, t.fiat_currency] }.each do |
   gain_in_fiat = crypto_worth_in_fiat - total_fiat_lost
   grand_total_fiat_gain += gain_in_fiat
   percent_gain_in_fiat = ((gain_in_fiat * 100.0) / total_fiat_lost).round(2)
+
   puts("\nCurrent Price: #{current_price.round(2)} #{fc}\n")
   puts("\nGain: #{gain_in_fiat.round(2)} #{fc} ( #{percent_gain_in_fiat} % )\n")
 
